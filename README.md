@@ -1,1 +1,2 @@
-# to-do-bot
+# to-do-bot for telegram
+# @wprdtopdf_bot
