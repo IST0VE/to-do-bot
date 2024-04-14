@@ -23,15 +23,21 @@ def delete_command(bot: TeleBot):
     def process_task_name_for_deletion(message, chat_id, is_group):
         task_name = message.text
         if is_group:
-            cursor.execute("DELETE FROM tasks WHERE description = %s AND group_id = %s RETURNING id", (task_name, chat_id))
+            cursor.execute("SELECT id FROM tasks WHERE name = %s AND group_id = %s", (task_name, chat_id))
         else:
             user_id = message.from_user.id
-            cursor.execute("DELETE FROM tasks WHERE description = %s AND user_id = %s RETURNING id", (task_name, user_id))
-    
-        deleted_task_id = cursor.fetchone()
-        db.commit()
-    
-        if deleted_task_id:
+            cursor.execute("SELECT id FROM tasks WHERE name = %s AND created_by_user_id = %s", (task_name, user_id))
+        
+        task = cursor.fetchone()
+        if task:
+            task_id = task[0]
+            # Удаление связанных записей в других таблицах
+            cursor.execute("DELETE FROM task_assignments WHERE task_id = %s", (task_id,))
+            cursor.execute("DELETE FROM task_files WHERE task_id = %s", (task_id,))
+            cursor.execute("DELETE FROM task_descriptions WHERE task_id = %s", (task_id,))
+            cursor.execute("DELETE FROM tasks WHERE id = %s", (task_id,))
+            cursor.execute("DELETE FROM task_dates WHERE task_id = %s", (task_id,))
+            db.commit()
             bot.send_message(chat_id, "Задача успешно удалена.")
         else:
             bot.send_message(chat_id, "Задача не найдена. Пожалуйста, попробуйте еще раз.")
@@ -40,6 +46,16 @@ def delete_command(bot: TeleBot):
     @bot.callback_query_handler(func=lambda call: call.data.startswith('delete_'))
     def callback_inline(call):
         task_id = call.data.split('_')[1]
-        cursor.execute("UPDATE tasks SET status = 'deleted' WHERE id = %s", (task_id,))
-        db.commit()
-        bot.answer_callback_query(call.id, "Задача удалена")
+        # Проверка наличия задачи
+        cursor.execute("SELECT id FROM tasks WHERE id = %s", (task_id,))
+        if cursor.fetchone():
+            # Удаление связанных записей в других таблицах
+            cursor.execute("DELETE FROM task_assignments WHERE task_id = %s", (task_id,))
+            cursor.execute("DELETE FROM task_files WHERE task_id = %s", (task_id,))
+            cursor.execute("DELETE FROM task_descriptions WHERE task_id = %s", (task_id,))
+            cursor.execute("DELETE FROM tasks WHERE id = %s", (task_id,))
+            cursor.execute("DELETE FROM task_dates WHERE task_id = %s", (task_id,))
+            db.commit()
+            bot.answer_callback_query(call.id, "Задача удалена")
+        else:
+            bot.answer_callback_query(call.id, "Задача не найдена")
