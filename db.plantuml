@@ -1,0 +1,48 @@
+@startuml bd
+
+class users {
+  +BIGINT user_id
+}
+
+class groups {
+  +BIGINT group_id
+}
+
+class tasks {
+  +INT id
+  +TEXT name
+  +TIMESTAMP creation_date
+  +BIGINT created_by_user_id
+  +BIGINT group_id
+}
+
+class task_assignments {
+  +INT assignment_id
+  +INT task_id
+  +BIGINT assigned_user_id
+  +DATETIME assignment_date
+}
+
+class task_files {
+  +INT file_id
+  +INT task_id
+  +TEXT file_link
+}
+
+class task_descriptions {
+  +INT description_id
+  +INT task_id
+  +VARCHAR(50) status
+  +VARCHAR(50) priority
+  +INT completion
+  +TEXT long_description
+}
+
+users --|> tasks : "created_by_user_id"
+groups --|> tasks : "group_id"
+tasks --|> task_assignments : "task_id"
+tasks --|> task_files : "task_id"
+tasks --|> task_descriptions : "task_id"
+users --|> task_assignments : "assigned_user_id"
+
+@enduml
